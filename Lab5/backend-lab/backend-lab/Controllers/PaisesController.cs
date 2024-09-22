@@ -23,5 +23,27 @@ namespace backend_lab.Controllers
             return paises;
         }
 
+        [HttpPost]
+        public async Task<ActionResult<bool>> CrearPais(PaisModel pais)
+        {
+            try
+            {
+                if (pais == null)
+                {
+                    return BadRequest();
+                }
+
+                PaisesHandler paisesHandler = new PaisesHandler();
+
+                var resultado = paisesHandler.CrearPais(pais);
+
+                return new JsonResult(resultado);
+
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, "Error creando país");
+            }
+        }
     }
 }
