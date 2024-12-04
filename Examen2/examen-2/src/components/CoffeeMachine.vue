@@ -43,6 +43,18 @@
                         <button class="money-button" @click="ingresarDinero(25)">Moneda ₡25</button>
                     </div>
                     <p class="total-money">Total Ingresado: ₡{{ dineroIngresado }}</p>
+                    <p class="change-message" v-if="mensajeVuelto !== null">
+                        {{ mensajeVuelto }}
+                    </p>
+                    <ul class="change-breakdown" v-if="desgloseVuelto.length > 0">
+                        <li v-for="(cantidad, index) in desgloseVuelto" :key="index">
+                            {{ cantidad }}
+                        </li>
+                    </ul>
+                </div>
+                <div>
+                    <button v-if="hayMonedas()" class="money-button" @click="finalizarCompra">Finalizar Compra</button>
+                    <p v-else class="out-of-service-message">Fuera de servicio: No hay monedas suficientes.</p>
                 </div>
             </div>
         </div>
@@ -72,64 +84,104 @@ export default {
             ],
             selectedItems: [],
             dineroIngresado: 0,
-            monedas: { 500: 20, 100: 30, 50: 50, 25: 25 } 
+            monedas: { 500: 20, 100: 30, 50: 50, 25: 25 },
+            mensajeVuelto: null,
+            desgloseVuelto: []
         };
     },
     methods: {
         agregarAlCarrito: function (cafe) {
-            cafe.errorMessage = "";
-
             if (cafe.selectedQuantity <= 0) {
-                cafe.errorMessage = "No se pueden ingresar cantidades negativas o cero.";
+                alert("La cantidad debe ser mayor a 0.");
                 cafe.selectedQuantity = 1;
                 return;
             }
 
-            if (cafe.cantidad <= 0) {
-                cafe.errorMessage = "El café " + cafe.nombre + " está agotado.";
+            if (cafe.cantidad < cafe.selectedQuantity) {
+                alert("No hay suficiente cantidad disponible.");
                 cafe.selectedQuantity = 1;
                 return;
             }
 
-            if (cafe.selectedQuantity > cafe.cantidad) {
-                cafe.errorMessage = "La cantidad solicitada supera la disponible.";
-                cafe.selectedQuantity = 1;
-                return;
-            }
+            cafe.cantidad -= cafe.selectedQuantity;
 
-            cafe.cantidad = cafe.cantidad - cafe.selectedQuantity;
-
-            var itemExistente = null;
-            for (var i = 0; i < this.selectedItems.length; i++) {
-                if (this.selectedItems[i].id === cafe.id) {
-                    itemExistente = this.selectedItems[i];
-                    break;
-                }
-            }
-
-            if (itemExistente !== null) {
-                itemExistente.cantidad = itemExistente.cantidad + cafe.selectedQuantity;
-                itemExistente.total = itemExistente.total + (cafe.precio * cafe.selectedQuantity);
+            const itemExistente = this.selectedItems.find(item => item.id === cafe.id);
+            if (itemExistente) {
+                itemExistente.cantidad += cafe.selectedQuantity;
+                itemExistente.total += cafe.selectedQuantity * cafe.precio;
             } else {
                 this.selectedItems.push({
                     id: cafe.id,
                     nombre: cafe.nombre,
                     cantidad: cafe.selectedQuantity,
-                    total: cafe.precio * cafe.selectedQuantity
+                    total: cafe.selectedQuantity * cafe.precio
                 });
             }
 
             cafe.selectedQuantity = 1;
         },
         calcularTotalCompra: function () {
-            var total = 0;
-            for (var i = 0; i < this.selectedItems.length; i++) {
-                total = total + this.selectedItems[i].total;
+            let total = 0;
+            for (let i = 0; i < this.selectedItems.length; i++) {
+                total += this.selectedItems[i].total;
             }
             return total;
         },
         ingresarDinero: function (monto) {
-            this.dineroIngresado = this.dineroIngresado + monto;
+            this.dineroIngresado += monto;
+        },
+        calcularCambio: function (cambio) {
+            const vuelto = {};
+            const denominaciones = [500, 100, 50, 25];
+
+            denominaciones.forEach(denominacion => {
+                const cantidadNecesaria = Math.floor(cambio / denominacion);
+                const cantidadUsar = Math.min(cantidadNecesaria, this.monedas[denominacion]);
+                if (cantidadUsar > 0) {
+                    vuelto[denominacion] = cantidadUsar;
+                    cambio -= cantidadUsar * denominacion;
+                }
+            });
+
+            if (cambio === 0) {
+                return vuelto;
+            } else {
+                return null;
+            }
+        },
+        hayMonedas: function () {
+            for (const cantidad of Object.values(this.monedas)) {
+                if (cantidad > 0) {
+                    return true;
+                }
+            }
+            return false;
+        },
+        finalizarCompra: function () {
+            const totalCompra = this.calcularTotalCompra();
+
+            if (totalCompra > this.dineroIngresado) {
+                this.mensajeVuelto = "Dinero insuficiente. Por favor, ingrese más dinero.";
+                this.desgloseVuelto = [];
+                return;
+            }
+
+            const cambio = this.dineroIngresado - totalCompra;
+            const vuelto = this.calcularCambio(cambio);
+
+            if (!vuelto) {
+                this.mensajeVuelto = "Fallo al realizar la compra: No hay monedas suficientes para el vuelto.";
+                this.desgloseVuelto = [];
+            } else {
+                this.mensajeVuelto = "Su vuelto es de " + cambio + " colones.";
+                this.desgloseVuelto = Object.entries(vuelto).map(
+                    ([denominacion, cantidad]) =>
+                        cantidad + " moneda(s) de " + denominacion + "."
+                );
+            }
+
+            this.selectedItems = [];
+            this.dineroIngresado = 0;
         }
     }
 };
@@ -347,6 +399,22 @@ body {
     font-weight: bold;
     color: white;
     text-align: center;
+}
+
+.change-breakdown {
+    margin-top: 10px;
+    padding-left: 20px;
+    color: #f1c40f;
+    font-size: 1rem;
+    list-style: disc;
+}
+
+.out-of-service-message {
+    color: red;
+    font-size: 1.2rem;
+    text-align: center;
+    margin-top: 10px;
+    font-weight: bold;
 }
 
 .tray-title {
