@@ -4,21 +4,15 @@
 
         <div class="machine-content">
             <div class="product-display">
-                <div v-for="cafe in cafes" :key="cafe.id" class="product-slot">
-                    <img :src="require(`@/assets/${cafe.image}`)" :alt="`Imagen de ${cafe.nombre}`" class="product-image" />
-                    <h3 class="product-name">{{ cafe.nombre }}</h3>
-                    <p class="product-price">Precio: ₡{{ cafe.precio }}</p>
-                    <p v-if="cafe.cantidad > 0" class="product-quantity">Disponible: {{ cafe.cantidad }}</p>
+                <div v-for="coffee in coffees" :key="coffee.id" class="product-slot">
+                    <img :src="require(`@/assets/${coffee.image}`)" :alt="`Imagen de ${coffee.name}`" class="product-image" />
+                    <h3 class="product-name">{{ coffee.name }}</h3>
+                    <p class="product-price">Precio: ₡{{ coffee.price }}</p>
+                    <p v-if="coffee.quantity > 0" class="product-quantity">Disponible: {{ coffee.quantity }}</p>
                     <p v-else class="sold-out">Agotado</p>
                     <div class="input-container">
-                        <input
-                            type="number"
-                            min="1"
-                            v-model.number="cafe.selectedQuantity"
-                            class="quantity-input"
-                            placeholder="Cantidad"
-                        />
-                        <button class="buy-button" @click="agregarAlCarrito(cafe)">Agregar</button>
+                        <input  type="number" min="1" v-model.number="coffee.selectedQuantity" class="quantity-input" placeholder="Cantidad"/>
+                        <button class="buy-button" @click="addToCart(coffee)">Agregar</button>
                     </div>
                 </div>
             </div>
@@ -26,34 +20,34 @@
             <div class="info-panel">
                 <h2 class="info-title">Información de la compra</h2>
                 <div class="selected-items">
-                    <p v-for="item in selectedItems" :key="item.id" class="purchase-item">
-                        {{ item.nombre }} x{{ item.cantidad }} - ₡{{ item.total }}
+                    <p v-for="item in cartItems" :key="item.id" class="purchase-item">
+                        {{ item.name }} x{{ item.quantity }} - ₡{{ item.total }}
                     </p>
-                    <p v-if="selectedItems.length > 0" class="total-amount">
-                        Total: ₡{{ calcularTotalCompra() }}
+                    <p v-if="cartItems.length > 0" class="total-amount">
+                        Total: ₡{{ calculateTotal() }}
                     </p>
                 </div>
                 <div class="payment-section">
                     <h2 class="payment-title">Ingreso de Dinero</h2>
                     <div class="payment-buttons">
-                        <button class="money-button" @click="ingresarDinero(1000)">Billete ₡1000</button>
-                        <button class="money-button" @click="ingresarDinero(500)">Moneda ₡500</button>
-                        <button class="money-button" @click="ingresarDinero(100)">Moneda ₡100</button>
-                        <button class="money-button" @click="ingresarDinero(50)">Moneda ₡50</button>
-                        <button class="money-button" @click="ingresarDinero(25)">Moneda ₡25</button>
+                        <button class="money-button" @click="insertMoney(1000)">Billete ₡1000</button>
+                        <button class="money-button" @click="insertMoney(500)">Moneda ₡500</button>
+                        <button class="money-button" @click="insertMoney(100)">Moneda ₡100</button>
+                        <button class="money-button" @click="insertMoney(50)">Moneda ₡50</button>
+                        <button class="money-button" @click="insertMoney(25)">Moneda ₡25</button>
                     </div>
-                    <p class="total-money">Total Ingresado: ₡{{ dineroIngresado }}</p>
-                    <p class="change-message" v-if="mensajeVuelto !== null">
-                        {{ mensajeVuelto }}
+                    <p class="total-money">Total Ingresado: ₡{{ insertedMoney }}</p>
+                    <p class="change-message" v-if="changeMessage !== null">
+                        {{ changeMessage }}
                     </p>
-                    <ul class="change-breakdown" v-if="desgloseVuelto.length > 0">
-                        <li v-for="(cantidad, index) in desgloseVuelto" :key="index">
-                            {{ cantidad }}
+                    <ul class="change-breakdown" v-if="changeBreakdown.length > 0">
+                        <li v-for="(amount, index) in changeBreakdown" :key="index">
+                            {{ amount }}
                         </li>
                     </ul>
                 </div>
                 <div>
-                    <button v-if="hayMonedas()" class="money-button" @click="finalizarCompra">Finalizar Compra</button>
+                    <button v-if="hasCoins()" class="money-button" @click="completePurchase">Finalizar Compra</button>
                     <p v-else class="out-of-service-message">Fuera de servicio: No hay monedas suficientes.</p>
                 </div>
             </div>
@@ -76,112 +70,99 @@ export default {
     name: "VendingMachine",
     data() {
         return {
-            cafes: [
-                { id: 1, nombre: "Americano", precio: 950, image: "CafeAmericano.png", cantidad: 10, selectedQuantity: 1 },
-                { id: 2, nombre: "Capuchino", precio: 1200, image: "Capuchino.png", cantidad: 8, selectedQuantity: 1 },
-                { id: 3, nombre: "Late", precio: 1350, image: "Late.png", cantidad: 10, selectedQuantity: 1 },
-                { id: 4, nombre: "Mocachino", precio: 1500, image: "Mocachino.png", cantidad: 15, selectedQuantity: 1 },
+            coffees: [
+                { id: 1, name: "Americano", price: 950, image: "CafeAmericano.png", quantity: 10, selectedQuantity: 1 },
+                { id: 2, name: "Capuchino", price: 1200, image: "Capuchino.png", quantity: 8, selectedQuantity: 1 },
+                { id: 3, name: "Late", price: 1350, image: "Late.png", quantity: 10, selectedQuantity: 1 },
+                { id: 4, name: "Mocachino", price: 1500, image: "Mocachino.png", quantity: 15, selectedQuantity: 1 },
             ],
-            selectedItems: [],
-            dineroIngresado: 0,
-            monedas: { 500: 20, 100: 30, 50: 50, 25: 25 },
-            mensajeVuelto: null,
-            desgloseVuelto: []
+            cartItems: [],
+            insertedMoney: 0,
+            coins: { 500: 20, 100: 30, 50: 50, 25: 25 },
+            changeMessage: null,
+            changeBreakdown: []
         };
     },
     methods: {
-        agregarAlCarrito: function (cafe) {
-            if (cafe.selectedQuantity <= 0) {
+        addToCart: function (coffee) {
+            if (coffee.selectedQuantity <= 0) {
                 alert("La cantidad debe ser mayor a 0.");
-                cafe.selectedQuantity = 1;
+                coffee.selectedQuantity = 1;
                 return;
             }
 
-            if (cafe.cantidad < cafe.selectedQuantity) {
+            if (coffee.quantity < coffee.selectedQuantity) {
                 alert("No hay suficiente cantidad disponible.");
-                cafe.selectedQuantity = 1;
+                coffee.selectedQuantity = 1;
                 return;
             }
 
-            cafe.cantidad -= cafe.selectedQuantity;
+            coffee.quantity -= coffee.selectedQuantity;
 
-            const itemExistente = this.selectedItems.find(item => item.id === cafe.id);
-            if (itemExistente) {
-                itemExistente.cantidad += cafe.selectedQuantity;
-                itemExistente.total += cafe.selectedQuantity * cafe.precio;
+            const existingItem = this.cartItems.find(item => item.id === coffee.id);
+            if (existingItem) {
+                existingItem.quantity += coffee.selectedQuantity;
+                existingItem.total += coffee.selectedQuantity * coffee.price;
             } else {
-                this.selectedItems.push({
-                    id: cafe.id,
-                    nombre: cafe.nombre,
-                    cantidad: cafe.selectedQuantity,
-                    total: cafe.selectedQuantity * cafe.precio
+                this.cartItems.push({
+                    id: coffee.id,
+                    name: coffee.name,
+                    quantity: coffee.selectedQuantity,
+                    total: coffee.selectedQuantity * coffee.price
                 });
             }
 
-            cafe.selectedQuantity = 1;
+            coffee.selectedQuantity = 1;
         },
-        calcularTotalCompra: function () {
-            let total = 0;
-            for (let i = 0; i < this.selectedItems.length; i++) {
-                total += this.selectedItems[i].total;
-            }
-            return total;
+        calculateTotal: function () {
+            return this.cartItems.reduce((total, item) => total + item.total, 0);
         },
-        ingresarDinero: function (monto) {
-            this.dineroIngresado += monto;
+        insertMoney: function (amount) {
+            this.insertedMoney += amount;
         },
-        calcularCambio: function (cambio) {
-            const vuelto = {};
-            const denominaciones = [500, 100, 50, 25];
+        calculateChange: function (change) {
+            const changeDetails = {};
+            const denominations = [500, 100, 50, 25];
 
-            denominaciones.forEach(denominacion => {
-                const cantidadNecesaria = Math.floor(cambio / denominacion);
-                const cantidadUsar = Math.min(cantidadNecesaria, this.monedas[denominacion]);
-                if (cantidadUsar > 0) {
-                    vuelto[denominacion] = cantidadUsar;
-                    cambio -= cantidadUsar * denominacion;
+            denominations.forEach(denomination => {
+                const needed = Math.floor(change / denomination);
+                const toUse = Math.min(needed, this.coins[denomination]);
+                if (toUse > 0) {
+                    changeDetails[denomination] = toUse;
+                    change -= toUse * denomination;
                 }
             });
 
-            if (cambio === 0) {
-                return vuelto;
-            } else {
-                return null;
-            }
+            return change === 0 ? changeDetails : null;
         },
-        hayMonedas: function () {
-            for (const cantidad of Object.values(this.monedas)) {
-                if (cantidad > 0) {
-                    return true;
-                }
-            }
-            return false;
+        hasCoins: function () {
+            return Object.values(this.coins).some(quantity => quantity > 0);
         },
-        finalizarCompra: function () {
-            const totalCompra = this.calcularTotalCompra();
+        completePurchase: function () {
+            const total = this.calculateTotal();
 
-            if (totalCompra > this.dineroIngresado) {
-                this.mensajeVuelto = "Dinero insuficiente. Por favor, ingrese más dinero.";
-                this.desgloseVuelto = [];
+            if (total > this.insertedMoney) {
+                this.changeMessage = "Dinero insuficiente. Por favor, ingrese más dinero.";
+                this.changeBreakdown = [];
                 return;
             }
 
-            const cambio = this.dineroIngresado - totalCompra;
-            const vuelto = this.calcularCambio(cambio);
+            const change = this.insertedMoney - total;
+            const changeDetails = this.calculateChange(change);
 
-            if (!vuelto) {
-                this.mensajeVuelto = "Fallo al realizar la compra: No hay monedas suficientes para el vuelto.";
-                this.desgloseVuelto = [];
+            if (!changeDetails) {
+                this.changeMessage = "Fallo al realizar la compra: No hay monedas suficientes para el vuelto.";
+                this.changeBreakdown = [];
             } else {
-                this.mensajeVuelto = "Su vuelto es de " + cambio + " colones.";
-                this.desgloseVuelto = Object.entries(vuelto).map(
-                    ([denominacion, cantidad]) =>
-                        cantidad + " moneda(s) de " + denominacion + "."
+                this.changeMessage = `Su vuelto es de ${change} colones.`;
+                this.changeBreakdown = Object.entries(changeDetails).map(
+                    ([denomination, quantity]) =>
+                        `${quantity} moneda(s) de ${denomination}.`
                 );
             }
 
-            this.selectedItems = [];
-            this.dineroIngresado = 0;
+            this.cartItems = [];
+            this.insertedMoney = 0;
         }
     }
 };
