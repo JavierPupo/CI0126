@@ -11,7 +11,7 @@
                     <p v-if="coffee.quantity > 0" class="product-quantity">Disponible: {{ coffee.quantity }}</p>
                     <p v-else class="sold-out">Agotado</p>
                     <div class="input-container">
-                        <input  type="number" min="1" v-model.number="coffee.selectedQuantity" class="quantity-input" placeholder="Cantidad"/>
+                        <input type="number" min="1" v-model.number="coffee.selectedQuantity" class="quantity-input" placeholder="Cantidad"/>
                         <button class="buy-button" @click="addToCart(coffee)">Agregar</button>
                     </div>
                 </div>
@@ -80,91 +80,107 @@ export default {
             insertedMoney: 0,
             coins: { 500: 20, 100: 30, 50: 50, 25: 25 },
             changeMessage: null,
-            changeBreakdown: []
+            changeBreakdown: [],
         };
     },
     methods: {
-        addToCart: function (coffee) {
-            if (coffee.selectedQuantity <= 0) {
-                alert("La cantidad debe ser mayor a 0.");
-                coffee.selectedQuantity = 1;
-                return;
-            }
-
-            if (coffee.quantity < coffee.selectedQuantity) {
-                alert("No hay suficiente cantidad disponible.");
-                coffee.selectedQuantity = 1;
-                return;
-            }
+        addToCart(coffee) {
+            if (!this.validateCart(coffee)) return;
 
             coffee.quantity -= coffee.selectedQuantity;
 
             const existingItem = this.cartItems.find(item => item.id === coffee.id);
             if (existingItem) {
-                existingItem.quantity += coffee.selectedQuantity;
-                existingItem.total += coffee.selectedQuantity * coffee.price;
+                this.updateCartItem(existingItem, coffee);
             } else {
-                this.cartItems.push({
-                    id: coffee.id,
-                    name: coffee.name,
-                    quantity: coffee.selectedQuantity,
-                    total: coffee.selectedQuantity * coffee.price
-                });
+                this.addNewItemToCart(coffee);
             }
 
             coffee.selectedQuantity = 1;
         },
-        calculateTotal: function () {
+        validateCart(coffee) {
+            if (coffee.selectedQuantity <= 0) {
+                alert("La cantidad debe ser mayor a 0.");
+                coffee.selectedQuantity = 1;
+                return false;
+            }
+            if (coffee.quantity < coffee.selectedQuantity) {
+                alert("No hay suficiente cantidad disponible.");
+                coffee.selectedQuantity = 1;
+                return false;
+            }
+            return true;
+        },
+        updateCartItem(existingItem, coffee) {
+            existingItem.quantity += coffee.selectedQuantity;
+            existingItem.total += coffee.selectedQuantity * coffee.price;
+        },
+        addNewItemToCart(coffee) {
+            this.cartItems.push({
+                id: coffee.id,
+                name: coffee.name,
+                quantity: coffee.selectedQuantity,
+                total: coffee.selectedQuantity * coffee.price,
+            });
+        },
+        calculateTotal() {
             return this.cartItems.reduce((total, item) => total + item.total, 0);
         },
-        insertMoney: function (amount) {
+        insertMoney(amount) {
             this.insertedMoney += amount;
         },
-        calculateChange: function (change) {
-            const changeDetails = {};
-            const denominations = [500, 100, 50, 25];
-
-            denominations.forEach(denomination => {
-                const needed = Math.floor(change / denomination);
-                const toUse = Math.min(needed, this.coins[denomination]);
-                if (toUse > 0) {
-                    changeDetails[denomination] = toUse;
-                    change -= toUse * denomination;
-                }
-            });
-
-            return change === 0 ? changeDetails : null;
-        },
-        hasCoins: function () {
-            return Object.values(this.coins).some(quantity => quantity > 0);
-        },
-        completePurchase: function () {
+        completePurchase() {
             const total = this.calculateTotal();
+            const change = this.insertedMoney - total;
 
-            if (total > this.insertedMoney) {
+            if (change < 0) {
                 this.changeMessage = "Dinero insuficiente. Por favor, ingrese más dinero.";
                 this.changeBreakdown = [];
                 return;
             }
 
-            const change = this.insertedMoney - total;
             const changeDetails = this.calculateChange(change);
-
             if (!changeDetails) {
                 this.changeMessage = "Fallo al realizar la compra: No hay monedas suficientes para el vuelto.";
                 this.changeBreakdown = [];
             } else {
+                this.updateCoins(changeDetails);
                 this.changeMessage = `Su vuelto es de ${change} colones.`;
                 this.changeBreakdown = Object.entries(changeDetails).map(
-                    ([denomination, quantity]) =>
-                        `${quantity} moneda(s) de ${denomination}.`
+                    ([denomination, quantity]) => `${quantity} moneda(s) de ${denomination}.`
                 );
             }
 
+            this.resetTransaction();
+        },
+        calculateChange(change) {
+            const changeDetails = {};
+            const denominations = [500, 100, 50, 25];
+
+            denominations.forEach(denomination => {
+                const needed = Math.floor(change / denomination);
+                const available = Math.min(needed, this.coins[denomination]);
+                if (available > 0) {
+                    changeDetails[denomination] = available;
+                    change -= available * denomination;
+                }
+            });
+
+            return change === 0 ? changeDetails : null;
+        },
+        updateCoins(changeDetails) {
+            Object.entries(changeDetails).forEach(([denomination, quantity]) => {
+                this.coins[denomination] -= quantity;
+            });
+        },
+        resetTransaction() {
             this.cartItems = [];
             this.insertedMoney = 0;
-        }
-    }
+        },
+        hasCoins() {
+            return Object.values(this.coins).some(quantity => quantity > 0);
+        },
+    },
 };
 </script>
 
