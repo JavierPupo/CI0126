@@ -7,12 +7,36 @@
           <div v-for="cafe in cafes" :key="cafe.id" class="product-slot">
             <img :src="require(`@/assets/${cafe.image}`)" :alt="`Imagen de ${cafe.nombre}`" class="product-image" />
             <h3 class="product-name">{{ cafe.nombre }}</h3>
-            <p class="product-price">₡{{ cafe.precio }}</p>
-            <p class="product-quantity">Disponible: {{ cafe.cantidad }}</p>
-            <button class="buy-button" @click="comprarCafe(cafe)">Comprar</button>
+            <p v-if="cafe.cantidad > 0" class="product-quantity">Disponible: {{ cafe.cantidad }}</p>
+            <p v-else class="sold-out">Agotado</p>
+            <div class="input-container">
+              <input
+                type="number"
+                min="1"
+                v-model.number="cafe.selectedQuantity"
+                class="quantity-input"
+                placeholder="Cantidad"
+              />
+              <button class="buy-button" @click="comprarCafe(cafe)">Comprar</button>
+            </div>
+            <p v-if="cafe.errorMessage" class="error-message">{{ cafe.errorMessage }}</p>
+          </div>
+        </div>
+  
+        <div class="info-panel">
+          <h2 class="info-title">Información de la compra</h2>
+          <div class="selected-items">
+            <p v-for="item in selectedItems" :key="item.id" class="purchase-item">
+              {{ item.nombre }} x{{ item.cantidad }} - ₡{{ item.total }}
+            </p>
+            <p v-if="selectedItems.length > 0" class="total-amount">
+              Total: ₡{{ calcularTotalCompra() }}
+            </p>
           </div>
         </div>
       </div>
+  
+      <h2 class="tray-title">Retire Aquí</h2>
   
       <div class="product-tray">
         <div class="arrow-container">
@@ -30,21 +54,66 @@
     data() {
       return {
         cafes: [
-          { id: 1, nombre: "Americano", precio: 950, image: "CafeAmericano.png", cantidad: 10 },
-          { id: 2, nombre: "Capuchino", precio: 1200, image: "Capuchino.png", cantidad: 8 },
-          { id: 3, nombre: "Late", precio: 1350, image: "Late.png", cantidad: 10 },
-          { id: 4, nombre: "Mocachino", precio: 1500, image: "Mocachino.png", cantidad: 15 },
+          { id: 1, nombre: "Americano", precio: 950, image: "CafeAmericano.png", cantidad: 10, selectedQuantity: 1, errorMessage: "" },
+          { id: 2, nombre: "Capuchino", precio: 1200, image: "Capuchino.png", cantidad: 8, selectedQuantity: 1, errorMessage: "" },
+          { id: 3, nombre: "Late", precio: 1350, image: "Late.png", cantidad: 10, selectedQuantity: 1, errorMessage: "" },
+          { id: 4, nombre: "Mocachino", precio: 1500, image: "Mocachino.png", cantidad: 15, selectedQuantity: 1, errorMessage: "" },
         ],
         selectedItems: [],
       };
     },
     methods: {
       comprarCafe(cafe) {
-        if (cafe.cantidad > 0) {
-          cafe.cantidad -= 1;
-        } else {
-          alert(`El café ${cafe.nombre} está agotado.`);
+        cafe.errorMessage = "";
+  
+        if (cafe.selectedQuantity <= 0) {
+          cafe.errorMessage = "No se pueden ingresar cantidades negativas o cero.";
+          cafe.selectedQuantity = 1; 
+          return;
         }
+  
+        if (cafe.cantidad <= 0) {
+          cafe.errorMessage = `El café ${cafe.nombre} está agotado.`;
+          cafe.selectedQuantity = 1; 
+          return;
+        }
+  
+        if (cafe.selectedQuantity > cafe.cantidad) {
+          cafe.errorMessage = `La cantidad solicitada supera la disponible.`;
+          cafe.selectedQuantity = 1; 
+          return;
+        }
+  
+        cafe.cantidad -= cafe.selectedQuantity;
+  
+        var itemExistente = null;
+        for (var i = 0; i < this.selectedItems.length; i++) {
+          if (this.selectedItems[i].id === cafe.id) {
+            itemExistente = this.selectedItems[i];
+            break;
+          }
+        }
+  
+        if (itemExistente !== null) {
+          itemExistente.cantidad += cafe.selectedQuantity;
+          itemExistente.total += cafe.precio * cafe.selectedQuantity;
+        } else {
+          this.selectedItems.push({
+            id: cafe.id,
+            nombre: cafe.nombre,
+            cantidad: cafe.selectedQuantity,
+            total: cafe.precio * cafe.selectedQuantity,
+          });
+        }
+  
+        cafe.selectedQuantity = 1;
+      },
+      calcularTotalCompra() {
+        var total = 0;
+        for (var i = 0; i < this.selectedItems.length; i++) {
+          total += this.selectedItems[i].total;
+        }
+        return total;
       },
     },
   };
@@ -54,7 +123,7 @@
   body {
     background: linear-gradient(to bottom, #1a1a1a, #333);
     color: white;
-    font-family: 'Arial', sans-serif;
+    font-family: "Arial", sans-serif;
     margin: 0;
     padding: 0;
     display: flex;
@@ -123,15 +192,26 @@
     margin-bottom: 5px;
   }
   
-  .product-price {
-    font-size: 0.9rem;
-    color: #ccc;
-  }
-  
   .product-quantity {
     font-size: 0.9rem;
     color: #f1c40f;
     margin-top: 5px;
+  }
+  
+  .quantity-input {
+    width: 60px;
+    margin-right: 10px;
+    padding: 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  .input-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
   }
   
   .buy-button {
@@ -142,19 +222,67 @@
     border-radius: 5px;
     font-size: 0.9rem;
     cursor: pointer;
-    margin-top: 10px;
     transition: background-color 0.3s ease;
   }
   
   .buy-button:hover {
     background: #d4ac0d;
   }
-
+  
+  .sold-out {
+    color: #f1c40f;
+    font-size: 0.9rem;
+    margin-top: 5px;
+    font-weight: bold;
+  }
+  
+  .error-message {
+    color: red;
+    font-size: 0.9rem;
+    margin-top: 5px;
+  }
+  
+  .info-panel {
+    background: #222;
+    border-radius: 10px;
+    padding: 20px;
+    flex: 1;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+  }
+  
+  .info-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #f1c40f;
+    text-align: center;
+    margin-bottom: 15px;
+  }
+  
+  .purchase-item {
+    color: #f1c40f;
+    font-size: 1rem;
+    margin-bottom: 5px;
+  }
+  
+  .total-amount {
+    margin-top: 10px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #f1c40f;
+    text-align: center;
+  }
+  
+  .tray-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #f1c40f;
+    margin: 10px 0;
+  }
+  
   .product-tray {
     background: #444;
     width: 90%;
     height: 100px;
-    margin-top: 20px;
     border-radius: 10px;
     display: flex;
     align-items: center;
