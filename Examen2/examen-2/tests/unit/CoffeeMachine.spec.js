@@ -2,7 +2,6 @@ import { shallowMount } from "@vue/test-utils";
 import CoffeeMachine from "@/components/CoffeeMachine.vue";
 
 describe("CoffeeMachine.vue", () => {
-  // Mock para window.alert
   window.alert = jest.fn();
 
   it("renders the correct title", () => {
@@ -12,7 +11,7 @@ describe("CoffeeMachine.vue", () => {
 
   it("adds an item to the cart correctly", () => {
     const wrapper = shallowMount(CoffeeMachine);
-    wrapper.vm.addToCart(wrapper.vm.coffees[0]); // Add the first coffee
+    wrapper.vm.addToCart(wrapper.vm.coffees[0]); 
     expect(wrapper.vm.cartItems.length).toBe(1);
     expect(wrapper.vm.cartItems[0].name).toBe("Americano");
   });
