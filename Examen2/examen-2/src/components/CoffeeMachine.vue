@@ -380,7 +380,7 @@ body {
     background: #f1c40f;
     color: black;
     border: none;
-    padding: 10px 20px;
+    padding: 5px 10px;
     border-radius: 5px;
     font-size: 1rem;
     cursor: pointer;
@@ -398,12 +398,20 @@ body {
     text-align: center;
 }
 
+.change-message {
+    margin-bottom: 0;
+    font-size: 1rem;
+    color: #f1c40f;
+}
+
 .change-breakdown {
-    margin-top: 10px;
+    margin-top: 5px; 
     padding-left: 20px;
     color: #f1c40f;
     font-size: 1rem;
     list-style: disc;
+    max-height: 100px;
+    overflow-y: auto;
 }
 
 .out-of-service-message {
